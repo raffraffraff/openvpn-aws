@@ -2,14 +2,13 @@
 This project is based on existing work by @samm-git here: https://github.com/samm-git/aws-vpn-client
 
 ## Changes:
-* Using current latest versions of OpenVPN, OpenSSL.
-* Build static `openvpn` and `server` binaries in an Ubuntu docker container
-* Create a simple FPM packager container that can produce RPM or DEB files
+* Using latest stable versions of openvpn, openssl, lz4
+* Build a static binary (in a Docker container)
+* Output a simple FPM packager container with the static binaries
 
 ## Motivation
-1. AWS VPN Client is nasty (uses .NET, and intermittently breaks on OpenSUSE Tumbleweed)
+1. The official AWS VPN Client is clunky (uses .NET, and intermittently breaks on OpenSUSE Tumbleweed)
 2. The existing aws-vpn-client project is out of date and leaves extra work for the user
 
 ## Usage
-1. Build the awsvpnclient-packager image: `docker build -t awsvpnclient-packager .`
-2. Create a package for your Linux distribution: `docker run -v $(pwd):/output awsvpnclient-packager rpm`
+Run `./build.sh`
