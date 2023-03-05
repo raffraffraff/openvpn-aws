@@ -1,2 +1,2 @@
-Cmnd_Alias OPENVPNAWS=/opt/openvpn-aws/openvpn
+Cmnd_Alias OPENVPNAWS=/opt/openvpn-aws/openvpn, /opt/openvpn-aws/stop.sh
 ALL ALL=NOPASSWD: OPENVPNAWS

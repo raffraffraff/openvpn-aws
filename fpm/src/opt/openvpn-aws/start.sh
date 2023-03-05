@@ -1,14 +1,10 @@
 #!/bin/bash
 
-wait_file() {
-  local file="$1"; shift
-  local wait_seconds="${1:-10}"; shift # 10 seconds as default timeout
-  until test $((wait_seconds--)) -eq 0 -o -f "$file" ; do sleep 1; done
-  ((++wait_seconds))
-}
-
 OFFICIAL_CLIENT_CONF_DIR=~/.config/AWSVPNClient/OpenVpnConfigs
+PIDFILE_DIR=/var/run/user/${UID}/openvpn-aws
 RAND=$(openssl rand -hex 12)
+
+mkdir -p ${PIDFILE_DIR}
 
 # Missing AWS Certificate
 export CERT="-----BEGIN CERTIFICATE-----
@@ -72,6 +68,7 @@ sed -i '/^remote-random-hostname.*$/d' ${TMPDIR}/vpn.conf
 # Starting SAML listener
 echo "Starting SAML listener an connecting to $VPN_HOST:$PORT over $PROTO"
 /opt/openvpn-aws/server &
+echo $! > ${PIDFILE_DIR}/server.pid
 
 # Hit VPN endpoint grab VPN_SID and SAML auth URL
 OVPN_OUT=$(/opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf --verb 3 \
@@ -88,6 +85,7 @@ echo "Waiting for SAML Authentication response"
 while [ 1 ]; do
   if [ -f "${TMPDIR}/saml-response.txt" ]; then
     echo "success"
+    pkill -F ${PIDFILE_DIR}/server.pid
     printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" > ${TMPDIR}/auth-user-pass
     rm ${TMPDIR}/saml-response.txt
     break
@@ -96,6 +94,7 @@ while [ 1 ]; do
   fi
   if [ $TIMER -eq 60 ]; then
     echo "SAML Authentication timed out"
+    pkill -F ${PIDFILE_DIR}/server.pid
     exit 1
   else
     echo -n "."
@@ -110,4 +109,24 @@ sudo /opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf \
   --proto $PROTO --remote $SRV $PORT \
   --script-security 2 \
   --keepalive 10 60 \
-  --auth-user-pass ${TMPDIR}/auth-user-pass
+  --auth-user-pass ${TMPDIR}/auth-user-pass &
+echo $! > ${PIDFILE_DIR}/openvpn.pid
+
+# Start tray notification
+disconnect() {
+  yad --button=Disconnect:0 \
+      --mouse \
+      --undecorated \
+      --timeout 3 && sudo /opt/openvpn-aws/stop.sh
+}
+
+export -f disconnect
+
+yad --notification \
+    --image=network-vpn \
+    --title "OpenVPN AWS" \
+    --text="AWS VPN" \
+    --menu='Disconnect!quit' \
+    --command="bash -c disconnect" \
+    --no-middle
+
