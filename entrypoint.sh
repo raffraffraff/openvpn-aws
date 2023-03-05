@@ -1,16 +1,19 @@
 #!/bin/bash
-cd /build/packages
-tar czf openvpn-aws.tgz -C /build/fpm/src opt usr
+PKGNAME=openvpn-aws
 
-for output_type in deb rpm; do
-  fpm --name openvpn-aws \
-    --description "AWS VPN Client based on statically compiled openvpn" \
+tar czf /build/packages/${PKGNAME}.tgz --overwrite -C /build/fpm/src opt usr
+
+for PKGFORMAT in deb rpm; do
+  fpm --force \
+    --name ${PKGNAME} \
+    --description "AWS-compatible OpenVPN client with SAML support" \
     --depends yad \
     --input-type tar \
-    --output-type ${output_type} \
+    --output-type ${PKGFORMAT} \
     --after-install fpm/scripts/post-install.sh \
     --before-remove fpm/scripts/pre-uninstall.sh \
     --after-remove fpm/scripts/post-uninstall.sh \
     -a all \
-    openvpn-aws.tgz
+    -p /build/packages/${PKGNAME}.${PKGFORMAT} \
+    /build/packages/${PKGNAME}.tgz
 done

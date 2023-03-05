@@ -1,7 +1,14 @@
 #!/bin/bash
 
+wait_file() {
+  local file="$1"; shift
+  local wait_seconds="${1:-10}"; shift # 10 seconds as default timeout
+  until test $((wait_seconds--)) -eq 0 -o -f "$file" ; do sleep 1; done
+  ((++wait_seconds))
+}
+
 OFFICIAL_CLIENT_CONF_DIR=~/.config/AWSVPNClient/OpenVpnConfigs
-TMPDIR=$(mktemp -d)
+RAND=$(openssl rand -hex 12)
 
 # Missing AWS Certificate
 export CERT="-----BEGIN CERTIFICATE-----
@@ -29,12 +36,15 @@ iEDPfUYd/x7H4c7/I9vG+o1VTqkC50cRRj70/b17KSa7qWFiNyi2LSr2EIZkyXCn
 sSi6
 -----END CERTIFICATE-----"
 
+# Prompt for an AWS VPN Client configuration
 pushd ${OFFICIAL_CLIENT_CONF_DIR}
 VPNCONF=$(yad --file)
 popd
 
 if [ ! -f "$VPNCONF" ]; then exit; fi
 
+echo "Copying and editing VPN configuration..."
+TMPDIR=$(mktemp -d)
 cd $TMPDIR
 cp $VPNCONF ${TMPDIR}/vpn.conf
 
@@ -44,46 +54,35 @@ sed -i '/^auth-retry.*$/d' ${TMPDIR}/vpn.conf
 
 echo "" >> ${TMPDIR}/vpn.conf
 echo "script-security 2" >> ${TMPDIR}/vpn.conf
-echo "up ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
-echo "down ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
+echo "up /opt/openvpn-aws/update-resolv-conf" >> ${TMPDIR}/vpn.conf
+echo "down /opt/openvpn-aws/update-resolv-conf" >> ${TMPDIR}/vpn.conf
 
 perl -i -0pe '$count = 0; s/-----BEGIN.*?-----END CERTIFICATE-----/(++$count == 3)?"$ENV{'CERT'}":$&/gesm;' ${TMPDIR}/vpn.conf
 
+echo "Parsing VPN endpoint and picking a single IP address to connect to"
 VPN_HOST=$(cat ${TMPDIR}/vpn.conf | grep 'remote ' | cut -d ' ' -f2)
 PORT=$(cat ${TMPDIR}/vpn.conf | grep 'remote ' | cut -d ' ' -f3)
 PROTO=$(cat ${TMPDIR}/vpn.conf | grep "proto " | cut -d " " -f2)
-
-echo "Starting SAML listener"
-/opt/openvpn-aws/server &
-SERVERPID=$!
-
-echo "Connecting to $VPN_HOST on port $PORT/$PROTO"
-wait_file() {
-  local file="$1"; shift
-  local wait_seconds="${1:-10}"; shift # 10 seconds as default timeout
-  until test $((wait_seconds--)) -eq 0 -o -f "$file" ; do sleep 1; done
-  ((++wait_seconds))
-}
-
-# create random hostname prefix for the vpn gw
-RAND=$(openssl rand -hex 12)
-
-# resolv manually hostname to IP, as we have to keep persistent ip address
 SRV=$(dig a +short "${RAND}.${VPN_HOST}"|head -n1)
+
+# Stripping remote DNS records from conf
 sed -i '/^remote .*$/d' ${TMPDIR}/vpn.conf
 sed -i '/^remote-random-hostname.*$/d' ${TMPDIR}/vpn.conf
 
-# cleanup
-echo "Getting SAML redirect URL from the AUTH_FAILED response (host: ${SRV}:${PORT})..."
+# Starting SAML listener
+echo "Starting SAML listener an connecting to $VPN_HOST:$PORT over $PROTO"
+/opt/openvpn-aws/server &
 
+# Hit VPN endpoint grab VPN_SID and SAML auth URL
 OVPN_OUT=$(/opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf --verb 3 \
      --proto "$PROTO" --remote "${SRV}" "${PORT}" \
      --auth-user-pass <( printf "%s\n%s\n" "N/A" "ACS::35001" ) \
     2>&1 | grep AUTH_FAILED,CRV1)
 
-echo $OVPN_OUT
-
+VPN_SID=$(echo "$OVPN_OUT" | awk -F : '{print $7}')
 URL=$(echo "$OVPN_OUT" | grep -Eo 'https://.+')
+
+# Perform SSO in the browser
 xdg-open $URL
 sleep 1
 wait_file "saml-response.txt" 60 || {
@@ -91,19 +90,12 @@ wait_file "saml-response.txt" 60 || {
   exit 1
 }
 
-# get SID from the reply
-VPN_SID=$(echo "$OVPN_OUT" | awk -F : '{print $7}')
-
+# Finally generate auth-user-pass from the SAML response and VPN SID, and launch openvpn
 echo "Running OpenVPN."
-
-# Finally OpenVPN with a SAML response we got
-# Delete saml-response.txt after connect
 printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" > ${TMPDIR}/auth-user-pass
-rm -f $TMPDIR/saml-response.txt
 sudo /opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf \
   --verb 3 --auth-nocache --inactive 3600 \
   --proto $PROTO --remote $SRV $PORT \
   --script-security 2 \
-  --route-up '/bin/rm saml-response.txt' \
   --keepalive 10 60 \
   --auth-user-pass ${TMPDIR}/auth-user-pass

@@ -1,0 +1,2 @@
+Cmnd_Alias OPENVPNAWS=/opt/openvpn-aws/openvpn
+ALL ALL=NOPASSWD: OPENVPNAWS

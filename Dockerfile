@@ -5,20 +5,13 @@ ENV LZO_VERSION=2.10
 ENV LZ4_VERSION=1.9.2
 ENV OPENVPN_VERSION=2.5.9
 
-COPY src /src
-COPY fpm /fpm
-
 WORKDIR /
 
 # Install build & package tools
 RUN apt-get update
 RUN apt-get install -y curl unzip golang build-essential autoconf golang libtool net-tools wget
 
-# Compile server.go
-RUN go build /src/server.go && \
-    mv server /fpm/src/opt/openvpn-aws/
-
-# Compile OpenSSL
+# Compile static OpenSSL
 RUN cd / && \
     wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
     tar xvf openssl-${OPENSSL_VERSION}.tar.gz && \
@@ -43,7 +36,13 @@ RUN cd / && \
     make && \
     make install
 
-# Compile openvpn
+# Copy OpenVPN patch and server.go
+COPY src /src
+
+# Compile server.go
+RUN go build /src/server.go
+
+# Patch OpenVPN and compile a static binary
 RUN cd / && \
     curl -L https://github.com/OpenVPN/openvpn/archive/v${OPENVPN_VERSION}.zip -o openvpn.zip && \
     unzip openvpn.zip && \
@@ -53,20 +52,24 @@ RUN cd / && \
     ./configure --enable-static  --disable-debug --disable-shared --disable-plugins --disable-unit-tests && \
     make LIBS="-all-static" && \
     make install-exec && \
-    strip /usr/local/sbin/openvpn && \
+    strip /usr/local/sbin/openvpn
+
+# Move static binaries to /fpm
+COPY fpm /fpm
+RUN cd / && \
+    mv server /fpm/src/opt/openvpn-aws/ && \
     mv /usr/local/sbin/openvpn /fpm/src/opt/openvpn-aws/
 
 # Final image: a package builder that uses FPM
 FROM ubuntu:latest
 
 WORKDIR /build
-
-COPY --from=builder /fpm /build/fpm
-COPY entrypoint.sh /
-
 VOLUME /build/output
 
-RUN apt-get update && apt-get install ruby rpm
-RUN gem install fpm
+COPY --from=builder /fpm /build/fpm
 
+RUN apt-get update && apt-get install -yq ruby rpm binutils
+RUN gem install --no-doc fpm
+
+COPY entrypoint.sh /
 ENTRYPOINT /entrypoint.sh
