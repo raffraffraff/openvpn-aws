@@ -81,18 +81,30 @@ OVPN_OUT=$(/opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf --verb 3 \
 
 VPN_SID=$(echo "$OVPN_OUT" | awk -F : '{print $7}')
 URL=$(echo "$OVPN_OUT" | grep -Eo 'https://.+')
-
-# Perform SSO in the browser
 xdg-open $URL
-sleep 1
-wait_file "saml-response.txt" 60 || {
-  echo "SAML Authentication timed out"
-  exit 1
-}
 
-# Finally generate auth-user-pass from the SAML response and VPN SID, and launch openvpn
+# Wait for the SAML response, and write out the auth-user-pass
+echo "Waiting for SAML Authentication response"
+while [ 1 ]; do
+  if [ -f "${TMPDIR}/saml-response.txt" ]; then
+    echo "success"
+    printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" > ${TMPDIR}/auth-user-pass
+    rm ${TMPDIR}/saml-response.txt
+    break
+  else
+    TIMER=$((TIMER+1))
+  fi
+  if [ $TIMER -eq 60 ]; then
+    echo "SAML Authentication timed out"
+    exit 1
+  else
+    echo -n "."
+    sleep 1
+  fi
+done
+
+# Start OpenVPN
 echo "Running OpenVPN."
-printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" > ${TMPDIR}/auth-user-pass
 sudo /opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf \
   --verb 3 --auth-nocache --inactive 3600 \
   --proto $PROTO --remote $SRV $PORT \
