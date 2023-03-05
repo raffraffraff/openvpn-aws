@@ -57,7 +57,7 @@ RUN cd / && \
     mv /usr/local/sbin/openvpn /fpm/src/opt/openvpn-aws/
 
 # Final image: a package builder that uses FPM
-FROM alpine:latest
+FROM ubuntu:latest
 
 WORKDIR /build
 
@@ -66,7 +66,7 @@ COPY entrypoint.sh /
 
 VOLUME /build/output
 
-RUN apk add --no-cache ruby rpm
+RUN apt-get update && apt-get install ruby rpm
 RUN gem install fpm
 
 ENTRYPOINT /entrypoint.sh

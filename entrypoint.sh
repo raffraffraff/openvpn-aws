@@ -1,5 +1,6 @@
-#!/bin/ash
-tar czf openvpn-aws.tgz -C /build/fpm/src opt etc usr
+#!/bin/bash
+cd /build/packages
+tar czf openvpn-aws.tgz -C /build/fpm/src opt usr
 
 for output_type in deb rpm; do
   fpm --name openvpn-aws \
@@ -13,5 +14,3 @@ for output_type in deb rpm; do
     -a all \
     openvpn-aws.tgz
 done
-
-cp openvpn-aws* /build/packages
