@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Encoding=UTF-8
-Name=AWS VPN Client
-Comment=AWS VPN Client
-Exec="/opt/awsvpnclient/start.sh"
-Path=/opt/awsvpnclient
+Name=OpenVPN AWS Client
+Comment=OpenVPN AWS Client
+Exec="/opt/openvpn-aws/start.sh"
+Path=/opt/openvpn-aws
 Icon=network-vpn.svg
 Terminal=false
 Categories=Network;VPN;

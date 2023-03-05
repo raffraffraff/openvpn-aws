@@ -1,18 +1,17 @@
 #!/bin/ash
-tar czf awsvpnclient.tgz -C /fpm/src opt etc usr
+tar czf openvpn-aws.tgz -C /build/fpm/src opt etc usr
 
 for output_type in deb rpm; do
-  fpm --name awsvpnclient \
-    --version ${OPENVPN_VERSION} \
+  fpm --name openvpn-aws \
     --description "AWS VPN Client based on statically compiled openvpn" \
     --depends yad \
     --input-type tar \
     --output-type ${output_type} \
-    --after-install scripts/post-install.sh \
-    --before-remove scripts/pre-uninstall.sh \
-    --after-remove scripts/post-uninstall.sh \
+    --after-install fpm/scripts/post-install.sh \
+    --before-remove fpm/scripts/pre-uninstall.sh \
+    --after-remove fpm/scripts/post-uninstall.sh \
     -a all \
-    awsvpnclient.tgz
+    openvpn-aws.tgz
 done
 
-cp awsvpnclient* /output
+cp openvpn-aws* /build/packages

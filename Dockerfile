@@ -16,7 +16,7 @@ RUN apt-get install -y curl unzip golang build-essential autoconf golang libtool
 
 # Compile server.go
 RUN go build /src/server.go && \
-    mv server /fpm/src/opt/awsvpnclient/
+    mv server /fpm/src/opt/openvpn-aws/
 
 # Compile OpenSSL
 RUN cd / && \
@@ -54,13 +54,19 @@ RUN cd / && \
     make LIBS="-all-static" && \
     make install-exec && \
     strip /usr/local/sbin/openvpn && \
-    mv /usr/local/sbin/openvpn /fpm/src/opt/awsvpnclient/
+    mv /usr/local/sbin/openvpn /fpm/src/opt/openvpn-aws/
 
 # Final image: a package builder that uses FPM
 FROM alpine:latest
-COPY --from=builder /fpm /fpm
-COPY entrypoint.sh /
-RUN apk add --no-cache ruby
-RUN gem install fpm
-ENTRYPOINT /entrypoint.sh
 
+WORKDIR /build
+
+COPY --from=builder /fpm /build/fpm
+COPY entrypoint.sh /
+
+VOLUME /build/output
+
+RUN apk add --no-cache ruby rpm
+RUN gem install fpm
+
+ENTRYPOINT /entrypoint.sh

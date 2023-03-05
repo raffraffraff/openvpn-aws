@@ -1,24 +1,9 @@
 #!/bin/bash
 
-VPNCONF=/tmp/awsvpnconfigs/marina-regs
-
+OFFICIAL_CLIENT_CONF_DIR=~/.config/AWSVPNClient/OpenVpnConfigs
 TMPDIR=$(mktemp -d)
 
-set -e
-echo "server"
-./server &
-
-cp $VPNCONF ${TMPDIR}/vpn.conf
-
-sed -i '/^auth-user-pass.*$/d' ${TMPDIR}/vpn.conf
-sed -i '/^auth-federate.*$/d' ${TMPDIR}/vpn.conf
-sed -i '/^auth-retry.*$/d' ${TMPDIR}/vpn.conf
-
-echo "" >> ${TMPDIR}/vpn.conf
-echo "script-security 2" >> ${TMPDIR}/vpn.conf
-echo "up ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
-echo "down ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
-
+# Missing AWS Certificate
 export CERT="-----BEGIN CERTIFICATE-----
 MIID7zCCAtegAwIBAgIBADANBgkqhkiG9w0BAQsFADCBmDELMAkGA1UEBhMCVVMx
 EDAOBgNVBAgTB0FyaXpvbmExEzARBgNVBAcTClNjb3R0c2RhbGUxJTAjBgNVBAoT
@@ -44,11 +29,33 @@ iEDPfUYd/x7H4c7/I9vG+o1VTqkC50cRRj70/b17KSa7qWFiNyi2LSr2EIZkyXCn
 sSi6
 -----END CERTIFICATE-----"
 
+pushd ${OFFICIAL_CLIENT_CONF_DIR}
+VPNCONF=$(yad --file)
+popd
+
+if [ ! -f "$VPNCONF" ]; then exit; fi
+
+cd $TMPDIR
+cp $VPNCONF ${TMPDIR}/vpn.conf
+
+sed -i '/^auth-user-pass.*$/d' ${TMPDIR}/vpn.conf
+sed -i '/^auth-federate.*$/d' ${TMPDIR}/vpn.conf
+sed -i '/^auth-retry.*$/d' ${TMPDIR}/vpn.conf
+
+echo "" >> ${TMPDIR}/vpn.conf
+echo "script-security 2" >> ${TMPDIR}/vpn.conf
+echo "up ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
+echo "down ${PWD}/update-resolv-conf" >> ${TMPDIR}/vpn.conf
+
 perl -i -0pe '$count = 0; s/-----BEGIN.*?-----END CERTIFICATE-----/(++$count == 3)?"$ENV{'CERT'}":$&/gesm;' ${TMPDIR}/vpn.conf
 
 VPN_HOST=$(cat ${TMPDIR}/vpn.conf | grep 'remote ' | cut -d ' ' -f2)
 PORT=$(cat ${TMPDIR}/vpn.conf | grep 'remote ' | cut -d ' ' -f3)
 PROTO=$(cat ${TMPDIR}/vpn.conf | grep "proto " | cut -d " " -f2)
+
+echo "Starting SAML listener"
+/opt/openvpn-aws/server &
+SERVERPID=$!
 
 echo "Connecting to $VPN_HOST on port $PORT/$PROTO"
 wait_file() {
@@ -67,10 +74,9 @@ sed -i '/^remote .*$/d' ${TMPDIR}/vpn.conf
 sed -i '/^remote-random-hostname.*$/d' ${TMPDIR}/vpn.conf
 
 # cleanup
-rm -f saml-response.txt
 echo "Getting SAML redirect URL from the AUTH_FAILED response (host: ${SRV}:${PORT})..."
 
-OVPN_OUT=$(/usr/sbin/openvpn --config ${TMPDIR}/vpn.conf --verb 3 \
+OVPN_OUT=$(/opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf --verb 3 \
      --proto "$PROTO" --remote "${SRV}" "${PORT}" \
      --auth-user-pass <( printf "%s\n%s\n" "N/A" "ACS::35001" ) \
     2>&1 | grep AUTH_FAILED,CRV1)
@@ -93,11 +99,11 @@ echo "Running OpenVPN."
 # Finally OpenVPN with a SAML response we got
 # Delete saml-response.txt after connect
 printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" > ${TMPDIR}/auth-user-pass
-sudo /usr/sbin/openvpn --config ${TMPDIR}/vpn.conf \
-              --verb 3 --auth-nocache --inactive 3600 \
-              --proto $PROTO --remote $SRV $PORT \
-              --script-security 2 \
-              --route-up '/bin/rm saml-response.txt' \
-              --keepalive 10 60 \
-              --auth-user-pass ${TMPDIR}/auth-user-pass
-
+rm -f $TMPDIR/saml-response.txt
+sudo /opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf \
+  --verb 3 --auth-nocache --inactive 3600 \
+  --proto $PROTO --remote $SRV $PORT \
+  --script-security 2 \
+  --route-up '/bin/rm saml-response.txt' \
+  --keepalive 10 60 \
+  --auth-user-pass ${TMPDIR}/auth-user-pass
