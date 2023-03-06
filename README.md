@@ -20,7 +20,6 @@ The purpose of this project is to make it (relatively) simple to download the so
 It works! It'll prompt you to choose an openvpn configuration files from the `~/.config/AWSVPNClient/OpenVpnConfigs/` directory, open your SSO login in the browser, and if you authenticate, it'll bring up a VPN connection.
 
 # TODO
-* Fix the `yad` notification
-* Make it easy to import a downloaded VPN config file
-* Testing, versioning, Github Actions
-* Maybe host a package here on GitHub?
+* Add `/usr/local/bin/awsvpn` and a bash-complete to import, list, start or stop connections
+* Replace the file-picker `yad` dialog with a form that runs `awsvpn` commands
+* Github Actions to build RPM and DEB packages
