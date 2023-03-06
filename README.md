@@ -1,12 +1,16 @@
-# AWS Client VPN with SAML SSO
+# What is this?
+It's bundle of scripts and a statically-compiled OpenVPN that has a few patches that support AWS Client VPN
+
+# Why?
+### AWS Client VPN with SAML SSO
 If you're an AWS customer, and you use the AWS Client VPN you will run into problems if you're a Linux user. The official client has a number of major issues:
 1. It only supports Ubuntu 18.04 or 20.04. No other distributions are supported.
 2. It only works on AMD64
-3. It's a basty .NET application
+3. It's a clunky .NET application
 
-I managed to get it repackaged into an RPM (which took half a day to compile some old dependencies) and it worked for a while. Then one day, after upgrading some unrelated system packages, it just ... _broke_. I tried `ldd`/`strace` etc but in the end I had to use snapper to roll back my system to a working state, and I had to leave it in that state in case it broke again!
+I managed to get the official client repackaged into an RPM (which required me to compile old versions of some dependencies). It worked for a while, and then one day when I upgraded some unrelated system packages, it broke! I tried for 30 minutes to resolve this by checking the outputs of `ldd`, `strace` etc, but in the end I work to do, so I had to roll back my system, and I couldn't risk any further upgrades until another solution could be found. _This_ is that solution.
 
-# Can't you use regular OpenVPN?
+## Can't you use regular OpenVPN?
 No, it won't work with AWS Client VPN service unless you patch it, and surround it with some extra logic to handle SAML SSO. Thankfully all of the hard work was done by @samm-git here: https://github.com/samm-git/aws-vpn-client
 
 # Building RPM/DEB packages
