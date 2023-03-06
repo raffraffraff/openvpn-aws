@@ -14,10 +14,12 @@ The purpose of this project is to make it (relatively) simple to download the so
 
 1. Clone this repo
 2. Run `./build.sh`
-3. Install the .deb/.rpm package created in the packages directory
+
+# Installing
+Just use `dpkg -i` or `rpm -i`, or you'll probably get warnings about the package being unsigned.
 
 # Status
-It works! It'll prompt you to choose an openvpn configuration files from the `~/.config/AWSVPNClient/OpenVpnConfigs/` directory, open your SSO login in the browser, and if you authenticate, it'll bring up a VPN connection.
+It works! You'll find a desktop shortcut called "OpenVPN AWS Client" in your desktop menu (or /usr/share/applications). When you launch it, you'll be prompted to choose a VPN configuration file from the existing AWS Client VPN configuration directory (`~/.config/AWSVPNClient/OpenVpnConfigs/`). This isn't ideal but it works as a straight-forward replacement for the official VPN client. Once you select a config, the start.sh script will import it, trigger SSO by opening a browser and directing you to your login portal, and will finally start the connection and leave a notification in the system tray.
 
 # TODO
 * Add `/usr/local/bin/awsvpn` and a bash-complete to import, list, start or stop connections
