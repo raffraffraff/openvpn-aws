@@ -5,6 +5,7 @@ PIDFILE_DIR=/var/run/user/${UID}/openvpn-aws
 RAND=$(openssl rand -hex 12)
 
 mkdir -p ${PIDFILE_DIR}
+echo $$ > ${PIDFILE_DIR}/start.pid
 
 # Missing AWS Certificate
 export CERT="-----BEGIN CERTIFICATE-----
@@ -112,21 +113,26 @@ sudo /opt/openvpn-aws/openvpn --config ${TMPDIR}/vpn.conf \
   --auth-user-pass ${TMPDIR}/auth-user-pass &
 echo $! > ${PIDFILE_DIR}/openvpn.pid
 
-# Start tray notification
+# Tray Disconnect button
 disconnect() {
   yad --button=Disconnect:0 \
       --mouse \
       --undecorated \
       --timeout 3 && sudo /opt/openvpn-aws/stop.sh
 }
-
 export -f disconnect
 
+# Tray Notification
 yad --notification \
     --image=network-vpn \
     --title "OpenVPN AWS" \
     --text="AWS VPN" \
     --menu='Disconnect!quit' \
     --command="bash -c disconnect" \
-    --no-middle
+    --no-middle &
 
+NOTIFICATION_PID=$!
+echo $NOTIFICATION_PID > ${PIDFILE_DIR}/notification.pid
+wait $NOTIFICATION_PID
+
+sudo /opt/openvpn-aws/stop.sh
