@@ -1,7 +1,7 @@
 #!/bin/bash
 PKGNAME=openvpn-aws
 
-tar czf /build/packages/${PKGNAME}.tgz --overwrite -C /build/fpm/src opt usr
+tar czf /build/packages/${PKGNAME}.tgz --overwrite -C /build/fpm/src opt usr etc
 
 for PKGFORMAT in deb rpm; do
   fpm --force \
