@@ -10,7 +10,7 @@ The native AWS Client VPN is sub-par in general, but it's worse for Linux users 
 While I eventually got the official client to work on OpenSUSE Tumbleweed, it was brittle. It bundles a .NET application that required old versions of some dependencies that I had to compile. While this worked for a few months, it broke unexpectedly after a seemingly unrelated system upgrade. I couldn't resolve the issue after 30 minutes of `ldd`ing and `strace`ing I had to roll back my system. Since I have to use the AWS Client VPN for work, this meant that I couldn't upgrade my system until I found an alternative.
 
 ## Why can't you use regular OpenVPN?
-OpenVPN doesn't support AWS Client VPN SSO without a patch it and extra scripting to launch a broser and grab a token. Thankfully all of the hard work was done by @samm-git here: https://github.com/samm-git/aws-vpn-client. I'm just making the whole thing easier by wrapping it in a Dockerfile and providing some extra automation. 
+OpenVPN doesn't support AWS Client VPN SSO without a patch it and extra scripting to launch a browser and grab a token. Thankfully all of the hard work was done by @samm-git here: https://github.com/samm-git/aws-vpn-client. I'm just making the whole thing easier by wrapping it in a Dockerfile and providing some extra automation. 
 
 ## Compiling
 This project downloads the source files for OpenVPN, patches them and builds a static `openvpn` binary. This means it should work on most Linux systems. 
