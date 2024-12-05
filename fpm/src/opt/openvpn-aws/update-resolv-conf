@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 case $script_type in
 
 up)
@@ -37,10 +36,18 @@ up)
   if [ "$R" ]; then
     echo -n "$R" > /etc/resolv.conf
   fi
+  RUN_DIR=$(dirname $config)
+  USER_ID=$(stat -c "%U" $config)
+  echo "connected" > ${RUN_DIR}/status
+  chown ${USER_ID} ${RUN_DIR}/status
   ;;
 
 down)
   cat /etc/resolv.conf.bak > /etc/resolv.conf
+  RUN_DIR=$(dirname $config)
+  USER_ID=$(stat -c "%U" $config)
+  echo "disconnected" > ${RUN_DIR}/status
+  chown ${USER_ID} ${RUN_DIR}/status
   ;;
 esac
 exit 0
