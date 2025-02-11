@@ -1,4 +1,4 @@
-FROM ubuntu:latest as builder
+FROM ubuntu:focal as builder
 
 ENV OPENSSL_VERSION=1.1.1t
 ENV LZO_VERSION=2.10
