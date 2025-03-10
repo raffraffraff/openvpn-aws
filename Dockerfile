@@ -1,4 +1,4 @@
-FROM ubuntu:focal as builder
+FROM ubuntu:focal AS builder
 
 ENV OPENSSL_VERSION=1.1.1t
 ENV LZO_VERSION=2.10
@@ -73,4 +73,4 @@ RUN apt-get update && apt-get install -yq ruby rpm binutils
 RUN gem install --no-doc fpm
 
 COPY entrypoint.sh /
-ENTRYPOINT /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]
