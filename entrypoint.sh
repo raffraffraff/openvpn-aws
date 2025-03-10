@@ -8,7 +8,7 @@ for PKGFORMAT in deb rpm; do
     --name ${PKGNAME} \
     --description "AWS-compatible OpenVPN client with SAML support" \
     --depends yad \
-    --depends notify-send \
+    --depends libnotify-tools \
     --input-type tar \
     --output-type ${PKGFORMAT} \
     --after-install fpm/scripts/post-install.sh \
