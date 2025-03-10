@@ -12,10 +12,7 @@ watcher() {
       echo "OpenVPN pid file found, running status $RUNNING"
       if [ $(( $(fileage) % 300 )) -gt 295 ]; then
         CURRENT_CONNECTION=$(cat $RUN_DIR/current_connection.txt)
-	yad --error  --title "OpenVPN" --text "Connected to $CURRENT_CONNECTION" --window-icon=yast-security --skip-taskbar --button "Ignore:1" --button "Disconnect:0" --timeout 2 --on-top
-        if [ $? -eq 0 ]; then
-          sudo /opt/openvpn-aws/stop.sh
-        fi
+	notify-send --app-name openvpn-aws --expire-time 3000 "openvpn-aws" "REMINDER: You are still connected to ${CURRENT_CONNECTION}!" --transient
       fi
     else
       echo "No OpenVPN pid found"
